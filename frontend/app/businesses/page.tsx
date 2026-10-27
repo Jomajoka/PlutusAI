@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabase } from "@/lib/supabaseClient";
 
 type Business = { id: string; name: string };
 
@@ -14,7 +14,7 @@ export default function Businesses() {
   const [error, setError] = useState<string | null>(null);
 
   async function authedFetch(path: string, init?: RequestInit) {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSupabase().auth.getSession();
     const token = data.session?.access_token;
     if (!token) {
       router.push("/login");
@@ -41,7 +41,7 @@ export default function Businesses() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabase().auth.getSession().then(({ data }) => {
       if (!data.session) {
         router.push("/login");
         return;
@@ -66,7 +66,7 @@ export default function Businesses() {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     router.push("/login");
   }
 
