@@ -39,7 +39,13 @@ async def scenario_query(body: ScenarioRequest, token: str = Depends(get_user_to
     if parsed.lever is None:
         return {
             "status": "needs_clarification",
-            "message": "I couldn't tell if this is about a price change or a sourcing/cost change. Could you rephrase?",
+            "message": (
+                "I can only simulate price changes or sourcing/cost changes right now "
+                "(e.g. \"raise the price of Widget by 10%\" or \"what if my supplier cost "
+                "for Widget drops 15%\"). I can't directly simulate a change in units sold, "
+                "since that's an outcome of a price or cost change, not something you set "
+                "directly."
+            ),
         }
 
     product = resolve_product_name(parsed.product_name, products)
