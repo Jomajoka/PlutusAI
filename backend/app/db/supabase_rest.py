@@ -11,10 +11,13 @@ def _headers(user_token: str) -> dict[str, str]:
     }
 
 
-async def list_rows(table: str, user_token: str) -> list[dict]:
+async def list_rows(
+    table: str, user_token: str, filters: dict[str, str] | None = None
+) -> list[dict]:
     url = f"{settings.supabase_url}/rest/v1/{table}"
+    params = {"select": "*", **(filters or {})}
     async with httpx.AsyncClient() as client:
-        resp = await client.get(url, headers=_headers(user_token), params={"select": "*"})
+        resp = await client.get(url, headers=_headers(user_token), params=params)
         resp.raise_for_status()
         return resp.json()
 
