@@ -5,10 +5,11 @@ from pydantic import BaseModel
 from app.api.deps import get_user_token
 from app.db import supabase_rest
 from app.extraction.candidates import extract_candidates
+from app.extraction.fast_path import resolve_deterministic
 from app.extraction.grouping import group_records
 from app.extraction.pdf import extract_pages_text, select_relevant_pages
 from app.llm.client import LLMUnavailableError
-from app.llm.structuring import StructuredRecord, structure_candidates
+from app.llm.structuring import StructuredRecord, StructuringResult, structure_candidates
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 
@@ -68,10 +69,21 @@ async def _preview_from_text(text: str, business_id: str, token: str) -> Preview
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
     known_product_names = [p["name"] for p in existing_products]
 
-    try:
-        result = structure_candidates(candidates, known_product_names)
-    except LLMUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+    # Resolve the unambiguous common case (an already-known product + a
+    # parseable period, both findable in context) without the LLM at all --
+    # it only ever sees candidates that genuinely need judgment (a brand-new
+    # product, an unparseable period, a real ambiguity).
+    fast_records, remaining_candidates = resolve_deterministic(candidates, known_product_names)
+
+    if remaining_candidates:
+        try:
+            result = structure_candidates(remaining_candidates, known_product_names)
+        except LLMUnavailableError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+    else:
+        result = StructuringResult()
+
+    result.records = fast_records + result.records
 
     return PreviewResponse(
         records=[PreviewRecord(**_record_dict(r)) for r in result.records],

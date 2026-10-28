@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 
+from app.calc_engine.periods import parse_period
 from app.extraction.keywords import FIELD_KEYWORDS
 
 # Matches numbers like: $1,234,000  1.2M  (500)  45%  1234.56
@@ -24,7 +25,9 @@ _SEARCH_WINDOW = 60
 # How many preceding non-blank lines to carry as context (e.g. a product
 # heading or period label above the matched line) for the LLM to use when
 # assigning product/period -- it never affects what counts as a valid match.
-_CONTEXT_LINES = 3
+# 4 rather than 3 so a 3rd field under a typical 2-line (period + product)
+# heading block still has both headings in view.
+_CONTEXT_LINES = 4
 
 
 @dataclass
@@ -35,6 +38,14 @@ class Candidate:
     value: float
     line_text: str
     context_text: str = ""
+    # The most recent line before this one that parses as a real period
+    # (e.g. "Q1 2024"), tracked across the WHOLE document, not just the
+    # nearby context window -- a period heading is often stated once and
+    # applies to several products listed below it, so a fixed lookback
+    # window would miss it for the 2nd+ product under that heading. This is
+    # purely syntactic (no business-specific knowledge needed), so tracking
+    # it unbounded is just as safe as the local window, only less limited.
+    nearest_period_text: str | None = None
 
 
 def parse_number(raw: str) -> float | None:
@@ -76,10 +87,14 @@ def extract_candidates(text: str) -> list[Candidate]:
     """
     candidates: list[Candidate] = []
     recent_lines: list[str] = []
+    current_period: str | None = None
 
     for line in text.splitlines():
         if not line.strip():
             continue
+        stripped = line.strip()
+        if parse_period(stripped) is not None:
+            current_period = stripped
         lower_line = line.lower()
 
         for field, keywords in FIELD_KEYWORDS.items():
@@ -110,10 +125,11 @@ def extract_candidates(text: str) -> list[Candidate]:
                         value=value,
                         line_text=line.strip(),
                         context_text="\n".join(recent_lines[-_CONTEXT_LINES:]),
+                        nearest_period_text=current_period,
                     )
                 )
                 break
 
-        recent_lines.append(line.strip())
+        recent_lines.append(stripped)
 
     return candidates
