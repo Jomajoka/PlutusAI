@@ -107,12 +107,6 @@ export default function Businesses() {
               >
                 Dashboard
               </Link>
-              <Link
-                href={`/ingest?business=${b.id}`}
-                className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
-              >
-                Add data
-              </Link>
             </div>
           </li>
         ))}

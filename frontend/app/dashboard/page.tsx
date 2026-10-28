@@ -21,6 +21,8 @@ import {
 
 import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
 
+import IngestPanel from "./IngestPanel";
+
 type Kpis = { total_revenue: number; total_units_sold: number; total_margin: number };
 type TrendPoint = { period: string; product_name: string; revenue: number };
 type MixRow = { product_name: string; revenue: number };
@@ -277,6 +279,9 @@ function DashboardInner() {
   const [askError, setAskError] = useState<string | null>(null);
   const [askResponse, setAskResponse] = useState<ScenarioResponse | null>(null);
 
+  const [showIngest, setShowIngest] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     authedFetch("/businesses")
       .then(async (res) => {
@@ -316,7 +321,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, refreshKey]);
 
   useEffect(() => {
     if (!businessId) return;
@@ -334,7 +339,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, refreshKey]);
 
   useEffect(() => {
     if (!businessId) return;
@@ -352,7 +357,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, refreshKey]);
 
   useEffect(() => {
     if (!businessId) return;
@@ -370,7 +375,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, refreshKey]);
 
   const productNames = useMemo(
     () => (summary ? [...new Set(summary.revenue_trend.map((r) => r.product_name))] : []),
@@ -461,14 +466,34 @@ function DashboardInner() {
           <p className="text-sm text-zinc-500">Choose a business above to see its dashboard.</p>
         )}
 
+        {businessId && !showIngest && (
+          <button
+            onClick={() => setShowIngest(true)}
+            className="cursor-pointer self-start rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            + Add data
+          </button>
+        )}
+
+        {businessId && showIngest && (
+          <IngestPanel
+            businessId={businessId}
+            onSaved={() => setRefreshKey((k) => k + 1)}
+            onClose={() => setShowIngest(false)}
+          />
+        )}
+
         {loading && <p className="text-sm text-zinc-500">Loading...</p>}
 
         {summary && !loading && summary.revenue_trend.length === 0 && (
           <p className="text-sm text-zinc-500">
             No financial data yet for this business.{" "}
-            <Link href={`/ingest?business=${businessId}`} className="underline hover:text-zinc-800 dark:hover:text-zinc-300">
+            <button
+              onClick={() => setShowIngest(true)}
+              className="cursor-pointer underline hover:text-zinc-800 dark:hover:text-zinc-300"
+            >
               Add some
-            </Link>
+            </button>
             .
           </p>
         )}
