@@ -33,6 +33,37 @@ type DashboardSummary = {
   margin_by_product: MarginRow[];
 };
 
+type BacktestRow = {
+  product_name: string;
+  held_out_period: string;
+  predicted_units_sold: number;
+  actual_units_sold: number;
+  predicted_revenue: number;
+  actual_revenue: number;
+  error_pct: number;
+  is_elasticity_estimated: boolean;
+  confidence: "low" | "medium" | "high";
+  inflation_pct: number | null;
+};
+
+type SeasonalityRow = {
+  product_name: string;
+  sub_period: string;
+  deviation_pct: number;
+  periods_used: number;
+};
+
+type BenchmarkResponse =
+  | { status: "unavailable" }
+  | {
+      status: "ok";
+      industry: string;
+      business_margin_pct: number;
+      benchmark_low_pct: number;
+      benchmark_high_pct: number;
+      position: "below" | "within" | "above";
+    };
+
 type SingleResult = {
   old_price?: number;
   new_price?: number;
@@ -53,6 +84,7 @@ type ScenarioResponse =
       result: SingleResult;
       elasticity_used: number | null;
       is_elasticity_estimated: boolean | null;
+      confidence: "low" | "medium" | "high" | null;
       narration: string | null;
     }
   | {
@@ -64,6 +96,7 @@ type ScenarioResponse =
       optimum: SweepPoint;
       elasticity_used: number | null;
       is_elasticity_estimated: boolean | null;
+      confidence: "low" | "medium" | "high" | null;
       narration: string | null;
     };
 
@@ -235,6 +268,10 @@ function DashboardInner() {
   const [error, setError] = useState<string | null>(null);
   const loading = businessId !== "" && summaryBusinessId !== businessId && !error;
 
+  const [backtests, setBacktests] = useState<BacktestRow[]>([]);
+  const [seasonality, setSeasonality] = useState<SeasonalityRow[]>([]);
+  const [benchmark, setBenchmark] = useState<BenchmarkResponse | null>(null);
+
   const [query, setQuery] = useState("");
   const [askLoading, setAskLoading] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
@@ -274,6 +311,60 @@ function DashboardInner() {
         }
         setError("Could not reach the server. Is the backend running?");
         setSummaryBusinessId(businessId);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!businessId) return;
+    let cancelled = false;
+
+    authedFetch(`/dashboard/backtest?business_id=${businessId}`)
+      .then(async (res) => {
+        if (cancelled || !res.ok) return;
+        setBacktests(await res.json());
+      })
+      .catch(() => {
+        if (!cancelled) setBacktests([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!businessId) return;
+    let cancelled = false;
+
+    authedFetch(`/dashboard/seasonality?business_id=${businessId}`)
+      .then(async (res) => {
+        if (cancelled || !res.ok) return;
+        setSeasonality(await res.json());
+      })
+      .catch(() => {
+        if (!cancelled) setSeasonality([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!businessId) return;
+    let cancelled = false;
+
+    authedFetch(`/dashboard/benchmark?business_id=${businessId}`)
+      .then(async (res) => {
+        if (cancelled || !res.ok) return;
+        setBenchmark(await res.json());
+      })
+      .catch(() => {
+        if (!cancelled) setBenchmark(null);
       });
 
     return () => {
@@ -489,6 +580,122 @@ function DashboardInner() {
               </ResponsiveContainer>
             </ChartCard>
 
+            {backtests.length > 0 && (
+              <ChartCard title="Model accuracy check (predicted vs. actual units sold)">
+                <p className="mb-3 text-xs text-[var(--text-muted)]">
+                  For each product with a real price change in its history, the model was given only the data
+                  before that change and asked to predict what happened next — here&apos;s how close it got.
+                </p>
+                <ResponsiveContainer width="100%" height={Math.max(140, backtests.length * 56)}>
+                  <BarChart
+                    data={backtests}
+                    layout="vertical"
+                    margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
+                  >
+                    <CartesianGrid horizontal={false} stroke="var(--grid)" strokeDasharray="0" />
+                    <XAxis
+                      type="number"
+                      stroke="var(--axis)"
+                      tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                      tickFormatter={compactNumber}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="product_name"
+                      stroke="var(--axis)"
+                      tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+                      width={90}
+                    />
+                    <Tooltip content={<LineKeyTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-secondary)" }} iconType="plainline" />
+                    <Bar dataKey="actual_units_sold" name="Actual" fill="var(--text-muted)" barSize={16} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="predicted_units_sold" name="Predicted" fill="var(--series-1)" barSize={16} radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <ul className="mt-3 flex flex-col gap-1">
+                  {backtests.map((row) => (
+                    <li key={row.product_name} className="text-xs text-[var(--text-muted)]">
+                      {row.product_name} ({row.held_out_period}): off by {Math.abs(row.error_pct * 100).toFixed(0)}%
+                      &middot; {row.confidence} confidence
+                      {row.inflation_pct !== null && (
+                        <> &middot; general inflation over this window: {(row.inflation_pct * 100).toFixed(1)}%</>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </ChartCard>
+            )}
+
+            {seasonality.length > 0 && (
+              <ChartCard title="Seasonal patterns">
+                <p className="mb-3 text-xs text-[var(--text-muted)]">
+                  Based on this product&apos;s own history across years, not a general industry claim.
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {seasonality.map((row) => {
+                    const up = row.deviation_pct > 0;
+                    return (
+                      <li
+                        key={`${row.product_name}-${row.sub_period}`}
+                        className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                      >
+                        <span className="text-[var(--text-secondary)]">
+                          {row.product_name} &middot; {row.sub_period}
+                        </span>
+                        <span
+                          className={
+                            "font-semibold " +
+                            (up ? "text-[var(--diverging-pos)]" : "text-[var(--diverging-neg)]")
+                          }
+                        >
+                          {up ? "+" : ""}
+                          {(row.deviation_pct * 100).toFixed(0)}% vs. average
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ChartCard>
+            )}
+
+            {benchmark?.status === "ok" && (
+              <ChartCard title={`Industry benchmark — ${benchmark.industry}`}>
+                <p className="mb-3 text-xs text-[var(--text-muted)]">
+                  Rough general reference based on your inferred industry, not live market data.
+                </p>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-semibold text-[var(--text-primary)]">
+                    {benchmark.business_margin_pct.toFixed(1)}%
+                  </span>
+                  <span className="text-sm text-[var(--text-secondary)]">
+                    your margin &middot; typical {benchmark.benchmark_low_pct.toFixed(0)}–
+                    {benchmark.benchmark_high_pct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className={
+                      "h-full " +
+                      (benchmark.position === "within"
+                        ? "bg-[var(--diverging-pos)]"
+                        : "bg-[var(--diverging-neg)]")
+                    }
+                    style={{
+                      width: `${Math.max(4, Math.min(100, (benchmark.business_margin_pct / benchmark.benchmark_high_pct) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                  {benchmark.position === "within" &&
+                    "Your margin falls within the typical range for this industry."}
+                  {benchmark.position === "below" &&
+                    "Your margin is below the typical range for this industry."}
+                  {benchmark.position === "above" &&
+                    "Your margin is above the typical range for this industry."}
+                </p>
+              </ChartCard>
+            )}
+
             <div className="rounded-xl border border-zinc-200 bg-[var(--surface-1)] p-5 shadow-sm dark:border-zinc-800">
               <h2 className="mb-3 text-sm font-semibold text-[var(--text-secondary)]">What-if</h2>
               <form onSubmit={handleAsk} className="flex gap-2">
@@ -522,8 +729,22 @@ function DashboardInner() {
 
               {askResponse?.status === "ok" && (
                 <div className="mt-4 flex flex-col gap-3">
-                  <h3 className="text-sm font-semibold text-[var(--text-secondary)]">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]">
                     {askResponse.product_name} &middot; {askResponse.lever === "price" ? "Price change" : "Sourcing change"}
+                    {askResponse.confidence && (
+                      <span
+                        className={
+                          "rounded-full px-2 py-0.5 text-xs font-normal " +
+                          (askResponse.confidence === "high"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            : askResponse.confidence === "medium"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                            : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400")
+                        }
+                      >
+                        {askResponse.confidence} confidence
+                      </span>
+                    )}
                   </h3>
 
                   {askResponse.kind === "single" && <BeforeAfterChart result={askResponse.result} />}

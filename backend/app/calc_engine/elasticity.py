@@ -26,6 +26,20 @@ class ElasticityEstimate:
     elasticity: float
     is_estimated: bool
     points_used: int
+    r_squared: float | None = None
+
+
+def confidence_label(estimate: "ElasticityEstimate") -> str:
+    """Deterministic confidence tag for a prediction built on this estimate --
+    computed from real fit quality, never an LLM's qualitative guess. Fed into
+    both the API response and the narration summary so any "how sure are we"
+    language is grounded in an actual number, not vibes.
+    """
+    if not estimate.is_estimated:
+        return "low"
+    if estimate.points_used >= 4 and (estimate.r_squared or 0.0) >= 0.7:
+        return "high"
+    return "medium"
 
 
 def _implied_price(record: dict) -> float | None:
@@ -69,4 +83,11 @@ def estimate_elasticity(financial_records: list[dict]) -> ElasticityEstimate:
         )
 
     slope = numerator / denominator
-    return ElasticityEstimate(elasticity=slope, is_estimated=True, points_used=len(points))
+    intercept = y_mean - slope * x_mean
+    ss_tot = sum((y - y_mean) ** 2 for y in y_vals)
+    ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(x_vals, y_vals))
+    r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 1.0
+
+    return ElasticityEstimate(
+        elasticity=slope, is_estimated=True, points_used=len(points), r_squared=r_squared
+    )

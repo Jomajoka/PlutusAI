@@ -1,6 +1,6 @@
 import pytest
 
-from app.calc_engine.elasticity import DEFAULT_ELASTICITY, estimate_elasticity
+from app.calc_engine.elasticity import DEFAULT_ELASTICITY, ElasticityEstimate, confidence_label, estimate_elasticity
 
 
 def test_perfect_power_law_recovers_exact_elasticity():
@@ -14,6 +14,28 @@ def test_perfect_power_law_recovers_exact_elasticity():
     assert result.is_estimated is True
     assert result.points_used == 3
     assert result.elasticity == pytest.approx(-2.0, abs=1e-6)
+    assert result.r_squared == pytest.approx(1.0, abs=1e-6)
+
+
+def test_confidence_label_high_for_good_fit_with_enough_points():
+    records = [
+        {"revenue": 1000.0, "units_sold": 100.0},
+        {"revenue": 500.0, "units_sold": 25.0},
+        {"revenue": 2000.0, "units_sold": 400.0},
+        {"revenue": 1500.0, "units_sold": 56.25},
+    ]
+    result = estimate_elasticity(records)
+    assert confidence_label(result) == "high"
+
+
+def test_confidence_label_medium_for_estimated_but_few_points():
+    result = ElasticityEstimate(elasticity=-1.8, is_estimated=True, points_used=3, r_squared=0.95)
+    assert confidence_label(result) == "medium"
+
+
+def test_confidence_label_low_when_not_estimated():
+    result = ElasticityEstimate(elasticity=DEFAULT_ELASTICITY, is_estimated=False, points_used=1, r_squared=None)
+    assert confidence_label(result) == "low"
 
 
 def test_falls_back_to_default_with_too_few_points():

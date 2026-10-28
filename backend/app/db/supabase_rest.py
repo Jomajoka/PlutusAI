@@ -30,3 +30,13 @@ async def insert_row(table: str, user_token: str, payload: dict) -> dict:
         resp = await client.post(url, headers=headers, json=payload)
         resp.raise_for_status()
         return resp.json()[0]
+
+
+async def update_row(table: str, user_token: str, filters: dict[str, str], payload: dict) -> dict:
+    url = f"{settings.supabase_url}/rest/v1/{table}"
+    headers = _headers(user_token)
+    headers["Prefer"] = "return=representation"
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(url, headers=headers, params=filters, json=payload)
+        resp.raise_for_status()
+        return resp.json()[0]

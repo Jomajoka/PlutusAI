@@ -7,7 +7,7 @@ No LLM involved here; this is the "division of labor" boundary.
 
 from dataclasses import dataclass
 
-from app.calc_engine.elasticity import estimate_elasticity
+from app.calc_engine.elasticity import confidence_label, estimate_elasticity
 from app.calc_engine.pricing import PriceChangeResult, SourcingChangeResult, simulate_price_change, simulate_sourcing_change
 from app.calc_engine.sweep import SweepResult, sweep_price_change
 
@@ -54,6 +54,7 @@ class ScenarioOutcome:
     lever: str
     elasticity_used: float | None
     is_elasticity_estimated: bool | None
+    confidence: str | None = None
     single: PriceChangeResult | SourcingChangeResult | None = None
     sweep: SweepResult | None = None
     message: str | None = None
@@ -83,7 +84,8 @@ def run_scenario(
             )
             return ScenarioOutcome(
                 kind="sweep", lever=lever, elasticity_used=estimate.elasticity,
-                is_elasticity_estimated=estimate.is_estimated, sweep=sweep,
+                is_elasticity_estimated=estimate.is_estimated, confidence=confidence_label(estimate),
+                sweep=sweep,
             )
 
         clamped = clamp_magnitude(magnitude)
@@ -92,7 +94,8 @@ def run_scenario(
         )
         return ScenarioOutcome(
             kind="single", lever=lever, elasticity_used=estimate.elasticity,
-            is_elasticity_estimated=estimate.is_estimated, single=single,
+            is_elasticity_estimated=estimate.is_estimated, confidence=confidence_label(estimate),
+            single=single,
         )
 
     if lever == "sourcing":
@@ -105,7 +108,8 @@ def run_scenario(
         new_cost = cost_per_unit * (1 + clamped)
         single = simulate_sourcing_change(current_price, current_units, cost_per_unit, new_cost)
         return ScenarioOutcome(
-            kind="single", lever=lever, elasticity_used=None, is_elasticity_estimated=None, single=single
+            kind="single", lever=lever, elasticity_used=None, is_elasticity_estimated=None,
+            confidence="high", single=single,
         )
 
     return None

@@ -82,6 +82,7 @@ async def scenario_query(body: ScenarioRequest, token: str = Depends(get_user_to
             "delta_profit": s.delta_profit,
             "elasticity_used": outcome.elasticity_used,
             "is_elasticity_estimated": outcome.is_elasticity_estimated,
+            "confidence": outcome.confidence,
         }
         narration = narrate_scenario(summary)
         return {
@@ -92,6 +93,7 @@ async def scenario_query(body: ScenarioRequest, token: str = Depends(get_user_to
             "result": vars(s),
             "elasticity_used": outcome.elasticity_used,
             "is_elasticity_estimated": outcome.is_elasticity_estimated,
+            "confidence": outcome.confidence,
             "narration": narration,
         }
 
@@ -104,6 +106,7 @@ async def scenario_query(body: ScenarioRequest, token: str = Depends(get_user_to
         "optimum": optimum,
         "elasticity_used": outcome.elasticity_used,
         "is_elasticity_estimated": outcome.is_elasticity_estimated,
+        "confidence": outcome.confidence,
     }
     narration = narrate_scenario(summary)
     return {
@@ -115,5 +118,6 @@ async def scenario_query(body: ScenarioRequest, token: str = Depends(get_user_to
         "optimum": optimum,
         "elasticity_used": outcome.elasticity_used,
         "is_elasticity_estimated": outcome.is_elasticity_estimated,
+        "confidence": outcome.confidence,
         "narration": narration,
     }

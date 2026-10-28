@@ -22,6 +22,9 @@ class Settings:
     llm_structuring_models: list[str] = [
         m for m in os.getenv("LLM_STRUCTURING_MODELS", "").split(",") if m
     ]
+    # Free, no-signup-cost key from fred.stlouisfed.org -- used for inflation
+    # (CPI) context only. Absent/empty just disables that feature gracefully.
+    fred_api_key: str = os.getenv("FRED_API_KEY", "")
 
 
 settings = Settings()

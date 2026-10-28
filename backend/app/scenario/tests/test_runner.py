@@ -24,6 +24,7 @@ def test_price_lever_with_magnitude_runs_single_simulation():
     outcome = run_scenario("price", 0.1, make_product(), records)
     assert outcome.kind == "single"
     assert outcome.is_elasticity_estimated is False  # only 1 period -> fallback
+    assert outcome.confidence == "low"
     assert outcome.single.new_price == pytest.approx(11.0)
 
 
@@ -47,6 +48,7 @@ def test_sourcing_lever_with_magnitude_hand_computed():
     # 20% cheaper sourcing: cost 4 -> 3.2, hand-computed delta_profit +80.
     outcome = run_scenario("sourcing", -0.2, make_product(), records)
     assert outcome.kind == "single"
+    assert outcome.confidence == "high"
     assert outcome.single.new_cost_per_unit == pytest.approx(3.2)
     assert outcome.single.delta_profit == pytest.approx(80.0)
 
