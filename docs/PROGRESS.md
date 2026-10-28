@@ -137,6 +137,18 @@ Prompted by the Specialty Soda investigation: ingestion was already down to exac
 - Verified against the real Golden Cup Cafe dataset (2 known products, 1 new product mixed in): 12 of 15 candidates resolved with zero LLM calls; only the 3 candidates for the genuinely new product were sent to the LLM. For a business with no new products in a given paste, this drops the LLM call count for that preview to zero.
 - Verified: 126 backend tests pass (10 new: 3 in `test_candidates.py` for `nearest_period_text` tracking, 6 in `test_fast_path.py`, plus the context-window bump required no other test changes).
 
+## Bug fix: revenue-over-time chart sorted periods lexically, not chronologically
+Found during manual testing (Specialty Soda's line looked "broken" on the dashboard despite being correctly classified now). Root cause: `build_dashboard_summary()`'s `revenue_trend` was sorted with plain `sorted(...)` on the `(period, product_name)` tuple -- a plain string sort of "Q1 2023".."Q4 2024" groups by quarter digit first and year second ("Q1 2023", "Q1 2024", "Q2 2023", ...), not true chronological order. This didn't look broken for Latte/Pastry Box, which have a data point in every quarter (a value at every x-axis position still draws a continuous line even in the wrong order). Specialty Soda only has data in Q3 2024 and Q4 2024 -- under the scrambled order, "Q4 2023" (where it has no data) landed *between* those two points, creating a real gap in its line, even though Q3 2024 and Q4 2024 are directly adjacent in actual time.
+- Fix: `app/dashboard/aggregation.py` now sorts `revenue_trend` by a real chronological key, reusing `app/calc_engine/periods.py` (`parse_period` + `period_date_range`) to turn each period into a real orderable date. Periods that don't parse (free-text, no year) fall back to sorting after every real one, by their own text -- never crashes, never guesses a date.
+- Verified: 127 backend tests pass (1 new regression test asserting "Q1 2023", "Q2 2023", "Q1 2024" sort in that chronological order, not lexical).
+
+## Merge ingestion into the dashboard page
+Same move as the earlier what-if merge: adding data required leaving the dashboard entirely, which broke the "see the effect of what I just added" loop.
+- Extracted the ingestion flow (paste text/upload PDF -> editable review table -> confirm) out of the old standalone `/ingest` page into `frontend/app/dashboard/IngestPanel.tsx`, a reusable component taking `businessId`, `onSaved`, and `onClose` props instead of its own business selector and page chrome.
+- `frontend/app/dashboard/page.tsx`: an "+ Add data" button toggles the panel inline; on a successful save, `onSaved` bumps a `refreshKey` state that's now in the dependency array of all four data-fetching effects (summary, backtest, seasonality, benchmark) -- so the whole dashboard re-fetches immediately without a page navigation. The "No financial data yet" empty-state message now opens the same inline panel instead of linking away.
+- Removed the standalone `/ingest` page and its link on the businesses page -- same rationale as removing `/scenario` earlier: one page now covers the full loop (see data -> add data -> see it update) rather than splitting it across routes.
+- Verified: frontend lint/build clean, `/ingest` page route no longer appears in the build output.
+
 ## Checkpoint 6 — Competitor lookup (stretch) — Not started
 - Plan: on-demand web-search tool call, triggered only when a scenario query references a competitor.
 

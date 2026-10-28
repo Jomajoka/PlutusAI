@@ -37,6 +37,21 @@ def test_revenue_trend_grouped_by_period_and_product():
     ]
 
 
+def test_revenue_trend_is_sorted_chronologically_not_lexically_across_years():
+    # A plain string sort would put "Q1 2024" before "Q2 2023" (groups by
+    # quarter digit first), scrambling a multi-year trend -- regression
+    # test for that bug.
+    products = [{"id": "p1", "name": "Widget"}]
+    records = [
+        {"product_id": "p1", "period": "Q2 2023", "revenue": 100.0},
+        {"product_id": "p1", "period": "Q1 2024", "revenue": 200.0},
+        {"product_id": "p1", "period": "Q1 2023", "revenue": 50.0},
+    ]
+    result = build_dashboard_summary(products, records)
+    periods_in_order = [row["period"] for row in result["revenue_trend"]]
+    assert periods_in_order == ["Q1 2023", "Q2 2023", "Q1 2024"]
+
+
 def test_product_mix_sums_revenue_across_periods():
     products = make_products()
     records = [
