@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
 import { getSupabase } from "@/lib/supabaseClient";
+import Logo from "@/components/Logo";
 
 export default function Businesses() {
   const router = useRouter();
@@ -62,16 +63,17 @@ export default function Businesses() {
 
   return (
     <div className="flex min-h-screen flex-col items-center gap-6 bg-zinc-50 p-10 font-sans dark:bg-black">
-      <div className="flex w-full max-w-sm justify-between">
-        <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
-          Your businesses
-        </h1>
-        <button
-          onClick={handleLogout}
-          className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
-        >
-          Log out
-        </button>
+      <div className="flex w-full max-w-sm flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Logo size="sm" />
+          <button
+            onClick={handleLogout}
+            className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+          >
+            Log out
+          </button>
+        </div>
+        <h1 className="text-xl font-semibold text-black dark:text-zinc-50">Your businesses</h1>
       </div>
 
       <form onSubmit={handleCreate} className="flex w-full max-w-sm gap-2">

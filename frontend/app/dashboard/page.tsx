@@ -20,6 +20,7 @@ import {
 } from "recharts";
 
 import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
+import { DashboardSkeleton } from "@/components/Skeleton";
 
 import IngestPanel from "./IngestPanel";
 
@@ -483,7 +484,7 @@ function DashboardInner() {
           />
         )}
 
-        {loading && <p className="text-sm text-zinc-500">Loading...</p>}
+        {loading && <DashboardSkeleton />}
 
         {summary && !loading && summary.revenue_trend.length === 0 && (
           <p className="text-sm text-zinc-500">

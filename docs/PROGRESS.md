@@ -163,6 +163,19 @@ Before trusting the suggested test questions, actually ran them against the real
 - **False alarm, corrected rather than "fixed":** expected "Pastries" to fuzzy-match "Pastry Box," but it scores 0.556 on `SequenceMatcher`, just under the deliberately strict 0.6 cutoff -- correctly asks for clarification instead of guessing. Not a bug; a bad example in my own test suggestions.
 - Verified: 132 backend tests pass (4 new: positive-slope guard, shared `period_sort_key` chronological + unparseable-fallback cases).
 
+## UI polish: PlutusAI logo + login page redesign
+- `frontend/components/Logo.tsx` -- a small inline-SVG logomark (an ascending line inside a rounded square, echoing the dashboard's own chart lines) plus a "PlutusAI" wordmark, built from scratch since no brand asset existed yet. Monochrome (adapts via `currentColor`/dark-mode classes), no new asset files, three sizes (`sm`/`md`/`lg`).
+- `frontend/app/login/page.tsx` redesigned: logo + a one-line tagline above the form, a tagline-bearing centered layout, subtle soft-blurred accent-color blobs in the background corners (very low opacity, decorative only), the form card bumped to `rounded-xl`/`shadow-sm` to match the dashboard's card style instead of the plainer `rounded-lg` it had before.
+- `frontend/app/businesses/page.tsx` also got the small logo in its header row, replacing the plain text-only heading (kept "Your businesses" as a subheading below it).
+- Deliberately left `frontend/app/dashboard/page.tsx` untouched, per explicit preference to keep its minimalism as-is.
+- Verified: frontend lint/build clean.
+
+## UI polish: skeleton loading state on the dashboard
+Replaced the plain "Loading..." text with a skeleton that mirrors the actual layout (3 stat tiles + 3 chart-card placeholders), so the page doesn't visibly jump/reflow once real data arrives.
+- `frontend/components/Skeleton.tsx` -- a generic pulsing `Skeleton` block plus a `DashboardSkeleton` shaped to match the dashboard's stat-tile row and chart cards (same `rounded-xl`/border/shadow treatment as the real cards).
+- Swapped into `frontend/app/dashboard/page.tsx` in place of the old `<p>Loading...</p>`.
+- Verified: frontend lint/build clean.
+
 ## Checkpoint 6 — Competitor lookup (stretch) — Not started
 - Plan: on-demand web-search tool call, triggered only when a scenario query references a competitor.
 

@@ -75,3 +75,32 @@ def test_no_usable_baseline_at_all_returns_none():
 def test_unknown_lever_returns_none():
     records = [{"period": "Q1", "revenue": 1000.0, "units_sold": 100.0}]
     assert run_scenario("discount_coupon", 0.1, make_product(), records) is None
+
+
+def test_derives_cost_from_financial_records_when_product_unit_cost_is_null():
+    # Regression test: products.unit_cost is never actually populated by the
+    # ingestion pipeline (only unit_price is tracked at the product level,
+    # see app/extraction/grouping.py) -- cost lived only in cost_breakdown
+    # per financial record. Before the fix, cost_per_unit silently fell back
+    # to 0.0 here, making every sourcing/price scenario ignore cost entirely.
+    product = {"id": "p1", "name": "Latte", "unit_cost": None, "unit_price": None}
+    records = [
+        {"period": "Q4 2024", "revenue": 6300.0, "units_sold": 1400.0, "cost_breakdown": {"total_cost": 2100.0}},
+    ]
+    outcome = run_scenario("sourcing", -0.2, product, records)
+    assert outcome.single.old_cost_per_unit == pytest.approx(1.5)  # 2100 / 1400
+    assert outcome.single.new_cost_per_unit == pytest.approx(1.2)
+    assert outcome.single.delta_profit > 0  # cheaper sourcing must increase profit
+
+
+def test_latest_baseline_picks_true_latest_period_not_lexically_latest():
+    # Regression test: a plain string sort of periods would put "Q1 2024"
+    # ahead of "Q2 2023" (groups by quarter digit first, year second),
+    # picking the wrong period as "latest" for a multi-year product.
+    product = {"id": "p1", "name": "Latte", "unit_cost": None, "unit_price": None}
+    records = [
+        {"period": "Q1 2024", "revenue": 100.0, "units_sold": 10.0},  # price 10, truly latest
+        {"period": "Q2 2023", "revenue": 200.0, "units_sold": 10.0},  # price 20, lexically "latest"
+    ]
+    outcome = run_scenario("price", 0.0, product, records)
+    assert outcome.single.old_price == pytest.approx(10.0)
