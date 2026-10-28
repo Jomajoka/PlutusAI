@@ -6,8 +6,17 @@ app/calc_engine.
 
 from app.calc_engine.backtest import backtest
 from app.calc_engine.elasticity import confidence_label, estimate_elasticity
-from app.calc_engine.periods import parse_period, period_date_range
+from app.calc_engine.periods import parse_period, period_date_range, period_sort_key
 from app.external.fred import fetch_cpi_change_pct
+
+
+def _implied_cost_per_unit(record: dict) -> float | None:
+    cost_breakdown = record.get("cost_breakdown") or {}
+    total_cost = cost_breakdown.get("total_cost")
+    units = record.get("units_sold")
+    if not total_cost or not units:
+        return None
+    return total_cost / units
 
 
 def _inflation_pct_over_window(previous_period: str, held_out_period: str) -> float | None:
@@ -35,9 +44,14 @@ def build_backtest_summary(products: list[dict], financial_records: list[dict]) 
     results = []
     for product in products:
         records = sorted(
-            records_by_product.get(product["id"], []), key=lambda r: r.get("period") or ""
+            records_by_product.get(product["id"], []),
+            key=lambda r: period_sort_key(r.get("period") or ""),
         )
-        result = backtest(records, product.get("unit_cost") or 0.0)
+        cost_per_unit = next(
+            (c for c in (_implied_cost_per_unit(r) for r in reversed(records)) if c is not None),
+            product.get("unit_cost") or 0.0,
+        )
+        result = backtest(records, cost_per_unit)
         if result is None:
             continue
 

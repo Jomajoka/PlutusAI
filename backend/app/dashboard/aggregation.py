@@ -3,21 +3,7 @@ into chart-ready shapes. No LLM involved -- this is plain arithmetic, and the
 chart template for each shape is fixed, never chosen by a model.
 """
 
-from app.calc_engine.periods import parse_period, period_date_range
-
-
-def _period_sort_key(period: str) -> tuple:
-    """Chronological sort key, not a plain string sort -- "Q1 2023" < "Q1
-    2024" < "Q2 2023" as strings would sort by quarter-number first and
-    year second, scrambling any multi-year trend. Falls back to sorting
-    unparseable periods (rare/free-text) after every real one, by their
-    own text, rather than crashing or guessing a date for them.
-    """
-    parsed = parse_period(period)
-    if parsed is None:
-        return (1, period)
-    start, _ = period_date_range(parsed)
-    return (0, start)
+from app.calc_engine.periods import period_sort_key
 
 
 def build_dashboard_summary(products: list[dict], financial_records: list[dict]) -> dict:
@@ -51,7 +37,7 @@ def build_dashboard_summary(products: list[dict], financial_records: list[dict])
         {"period": period, "product_name": product_name, "revenue": revenue}
         for (period, product_name), revenue in sorted(
             revenue_by_period_product.items(),
-            key=lambda item: (_period_sort_key(item[0][0]), item[0][1]),
+            key=lambda item: (period_sort_key(item[0][0]), item[0][1]),
         )
     ]
     product_mix = [

@@ -83,6 +83,18 @@ def estimate_elasticity(financial_records: list[dict]) -> ElasticityEstimate:
         )
 
     slope = numerator / denominator
+
+    # Price elasticity of demand is never positive for a normal good (higher
+    # price can't genuinely increase quantity sold) -- a positive slope here
+    # means something else (seasonality, a trend, noise) swamped the one or
+    # two real price changes in the history rather than the regression
+    # finding a real demand relationship. Treat that as "couldn't estimate"
+    # rather than hand back a backwards, confidently-wrong prediction.
+    if slope > 0:
+        return ElasticityEstimate(
+            elasticity=DEFAULT_ELASTICITY, is_estimated=False, points_used=len(points)
+        )
+
     intercept = y_mean - slope * x_mean
     ss_tot = sum((y - y_mean) ** 2 for y in y_vals)
     ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(x_vals, y_vals))

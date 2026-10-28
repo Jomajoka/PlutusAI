@@ -33,6 +33,24 @@ def test_confidence_label_medium_for_estimated_but_few_points():
     assert confidence_label(result) == "medium"
 
 
+def test_positive_slope_falls_back_to_default_instead_of_a_backwards_prediction():
+    # Regression test: units_sold varying mostly due to seasonality at a
+    # near-constant price, plus one real price increase, can confound the
+    # regression into a positive slope -- which would mean "raising price
+    # increases demand," backwards for a normal good. Must fall back rather
+    # than hand back a confidently-wrong, backwards prediction.
+    records = [
+        {"revenue": 4000.0, "units_sold": 1000.0},  # price 4.0
+        {"revenue": 4000.0, "units_sold": 1000.0},  # price 4.0
+        {"revenue": 5600.0, "units_sold": 1400.0},  # price 4.0, seasonal spike
+        {"revenue": 4000.0, "units_sold": 1000.0},  # price 4.0
+        {"revenue": 6300.0, "units_sold": 1400.0},  # price 4.5, the one real change
+    ]
+    result = estimate_elasticity(records)
+    assert result.is_estimated is False
+    assert result.elasticity == DEFAULT_ELASTICITY
+
+
 def test_confidence_label_low_when_not_estimated():
     result = ElasticityEstimate(elasticity=DEFAULT_ELASTICITY, is_estimated=False, points_used=1, r_squared=None)
     assert confidence_label(result) == "low"

@@ -8,6 +8,7 @@ No LLM involved here; this is the "division of labor" boundary.
 from dataclasses import dataclass
 
 from app.calc_engine.elasticity import confidence_label, estimate_elasticity
+from app.calc_engine.periods import period_sort_key
 from app.calc_engine.pricing import PriceChangeResult, SourcingChangeResult, simulate_price_change, simulate_sourcing_change
 from app.calc_engine.sweep import SweepResult, sweep_price_change
 
@@ -33,19 +34,53 @@ def _implied_price(record: dict) -> float | None:
     return revenue / units
 
 
-def _latest_baseline(product: dict, financial_records: list[dict]) -> tuple[float, float] | None:
-    """Current (price, units_sold) baseline: prefer the most recent period's
-    actuals, falling back to the product's stored unit_price if no history
-    has both revenue and units_sold.
-    """
-    for record in sorted(financial_records, key=lambda r: r.get("period") or "", reverse=True):
-        price = _implied_price(record)
-        units = record.get("units_sold")
-        if price and units:
-            return price, units
+def _implied_cost_per_unit(record: dict) -> float | None:
+    cost_breakdown = record.get("cost_breakdown") or {}
+    total_cost = cost_breakdown.get("total_cost")
+    units = record.get("units_sold")
+    if not total_cost or not units:
+        return None
+    return total_cost / units
 
-    price = product.get("unit_price")
-    return (price, 0.0) if price else None
+
+def _latest_baseline(product: dict, financial_records: list[dict]) -> tuple[float, float, float] | None:
+    """Current (price, units_sold, cost_per_unit) baseline: prefer the most
+    recent period's actuals for all three -- cost_per_unit is derived the
+    same way price already is (financial_records has cost_breakdown and
+    units_sold per period, but no direct per-unit figure), since
+    products.unit_cost is never actually populated by ingestion (only
+    unit_price is tracked at the product level). Falls back to the
+    product's stored unit_cost/unit_price only if history has nothing usable.
+    """
+    sorted_records = sorted(
+        financial_records, key=lambda r: period_sort_key(r.get("period") or ""), reverse=True
+    )
+
+    price = None
+    units = None
+    for record in sorted_records:
+        candidate_price = _implied_price(record)
+        candidate_units = record.get("units_sold")
+        if candidate_price and candidate_units:
+            price, units = candidate_price, candidate_units
+            break
+
+    if price is None:
+        price = product.get("unit_price")
+        units = 0.0
+        if not price:
+            return None
+
+    cost_per_unit = None
+    for record in sorted_records:
+        candidate_cost = _implied_cost_per_unit(record)
+        if candidate_cost is not None:
+            cost_per_unit = candidate_cost
+            break
+    if cost_per_unit is None:
+        cost_per_unit = product.get("unit_cost") or 0.0
+
+    return price, units, cost_per_unit
 
 
 @dataclass
@@ -72,8 +107,7 @@ def run_scenario(
     baseline = _latest_baseline(product, financial_records)
     if baseline is None:
         return None
-    current_price, current_units = baseline
-    cost_per_unit = product.get("unit_cost") or 0.0
+    current_price, current_units, cost_per_unit = baseline
 
     if lever == "price":
         estimate = estimate_elasticity(financial_records)

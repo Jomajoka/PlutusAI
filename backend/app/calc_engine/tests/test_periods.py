@@ -1,4 +1,4 @@
-from app.calc_engine.periods import ParsedPeriod, parse_period, period_date_range
+from app.calc_engine.periods import ParsedPeriod, parse_period, period_date_range, period_sort_key
 
 
 def test_parses_quarter_and_year():
@@ -63,3 +63,13 @@ def test_date_range_for_year_only_spans_whole_year():
     start, end = period_date_range(ParsedPeriod(year=2023, sub_period=None))
     assert start == "2023-01-01"
     assert end == "2023-12-31"
+
+
+def test_period_sort_key_orders_chronologically_across_years():
+    periods = ["Q1 2024", "Q2 2023", "Q1 2023", "Q4 2023"]
+    assert sorted(periods, key=period_sort_key) == ["Q1 2023", "Q2 2023", "Q4 2023", "Q1 2024"]
+
+
+def test_period_sort_key_puts_unparseable_periods_last():
+    periods = ["Q1 2024", "Fiscal A"]
+    assert sorted(periods, key=period_sort_key) == ["Q1 2024", "Fiscal A"]

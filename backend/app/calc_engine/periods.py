@@ -96,3 +96,19 @@ def period_date_range(parsed: ParsedPeriod) -> tuple[str, str]:
 
     end_day = calendar.monthrange(year, end_month)[1]
     return f"{year:04d}-{start_month:02d}-01", f"{year:04d}-{end_month:02d}-{end_day:02d}"
+
+
+def period_sort_key(period: str) -> tuple:
+    """Chronological sort key for a period string -- NOT a plain string
+    sort. "Q1 2024" < "Q2 2023" as text would group by quarter digit first
+    and year second, scrambling any multi-year sequence (this exact bug has
+    hit both the dashboard trend chart and a scenario's "latest period"
+    lookup -- one shared helper now, instead of three copies drifting).
+    Periods that don't parse sort after every real one, by their own text,
+    rather than crashing or guessing a date for them.
+    """
+    parsed = parse_period(period)
+    if parsed is None:
+        return (1, period or "")
+    start, _ = period_date_range(parsed)
+    return (0, start)
