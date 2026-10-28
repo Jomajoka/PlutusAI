@@ -9,16 +9,24 @@ list of (field, value, source_line, context_lines) candidates that were \
 ALREADY extracted deterministically from a business document -- you did not \
 find these numbers and must not invent, adjust, or add any new ones.
 
-Your only job: for each candidate, decide which product it belongs to (using \
-the provided list of known product names, or "General" if none fit or none \
-were given) and which reporting period it belongs to (e.g. "Q1 2024"). Use \
-context_lines (the lines immediately preceding source_line in the original \
-document, such as a product heading or period label) to make this \
-assignment -- do not default to "General"/omit the period just because the \
-number itself doesn't contain a product or period name. If a candidate \
-clearly isn't a real financial figure (e.g. a page number, a year by \
-itself), omit it. When you echo source_line back, copy it EXACTLY as given \
--- never copy from context_lines instead.
+Your only job: for each candidate, decide which product it belongs to and \
+which reporting period it belongs to (e.g. "Q1 2024"). Use context_lines \
+(the lines immediately preceding source_line in the original document, such \
+as a product heading or period label) to make this assignment -- do not \
+default to "General"/omit the period just because the number itself doesn't \
+contain a product or period name.
+
+The known_product_names list is products that ALREADY EXIST in this \
+business from past data -- it is NOT the only products allowed. If \
+context_lines clearly name a product heading that isn't on that list (a new \
+product being reported for the first time), use that product name exactly \
+as it appears in context_lines -- do NOT force it into "General" or into an \
+existing product on the list just because it's unfamiliar. Only use \
+"General" when context_lines genuinely give no product name to go on.
+
+If a candidate clearly isn't a real financial figure (e.g. a page number, a \
+year by itself), omit it. When you echo source_line back, copy it EXACTLY \
+as given -- never copy from context_lines instead.
 
 You may also note anything in the document that seems relevant but doesn't \
 fit (e.g. mentions of competitors or market context) in a separate "notes" \
