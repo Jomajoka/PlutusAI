@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { authedFetch, Business } from "@/lib/api";
 import { getSupabase } from "@/lib/supabaseClient";
 
 export default function Login() {
@@ -25,6 +26,19 @@ export default function Login() {
     if (error) {
       setError(error.message);
       return;
+    }
+
+    try {
+      const res = await authedFetch("/businesses");
+      if (res.ok) {
+        const businesses: Business[] = await res.json();
+        if (businesses.length > 0) {
+          router.push(`/dashboard?business=${businesses[0].id}`);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to the businesses page if the lookup failed.
     }
 
     router.push("/businesses");

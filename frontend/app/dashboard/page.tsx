@@ -11,6 +11,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -31,6 +32,108 @@ type DashboardSummary = {
   product_mix: MixRow[];
   margin_by_product: MarginRow[];
 };
+
+type SingleResult = {
+  old_price?: number;
+  new_price?: number;
+  old_profit: number;
+  new_profit: number;
+  delta_profit: number;
+};
+
+type SweepPoint = { new_price: number; new_profit: number; elasticity_used: number };
+
+type ScenarioResponse =
+  | { status: "needs_clarification"; message: string }
+  | {
+      status: "ok";
+      kind: "single";
+      lever: string;
+      product_name: string;
+      result: SingleResult;
+      elasticity_used: number | null;
+      is_elasticity_estimated: boolean | null;
+      narration: string | null;
+    }
+  | {
+      status: "ok";
+      kind: "sweep";
+      lever: string;
+      product_name: string;
+      points: SweepPoint[];
+      optimum: SweepPoint;
+      elasticity_used: number | null;
+      is_elasticity_estimated: boolean | null;
+      narration: string | null;
+    };
+
+function currencyFull(n: number): string {
+  return `${n < 0 ? "-" : ""}$${compactNumber(Math.abs(n))}`;
+}
+
+function friendlyScenarioError(status: number, detail: string): string {
+  if (status === 503) {
+    return "The AI model is temporarily unavailable (free-tier models can be rate-limited). Please try again in a moment.";
+  }
+  return `Something went wrong (${status}). ${detail}`;
+}
+
+function BeforeAfterChart({ result }: { result: SingleResult }) {
+  const improved = result.delta_profit >= 0;
+  const data = [
+    { label: "Before", profit: result.old_profit },
+    { label: "After", profit: result.new_profit },
+  ];
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="0" />
+        <XAxis dataKey="label" stroke="var(--axis)" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} />
+        <YAxis stroke="var(--axis)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} tickFormatter={compactNumber} />
+        <Tooltip
+          formatter={(value: number) => currencyFull(value)}
+          contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--grid)", fontSize: 12 }}
+        />
+        <Bar dataKey="profit" name="Profit" barSize={48} radius={[4, 4, 0, 0]}>
+          <Cell fill="var(--text-muted)" />
+          <Cell fill={improved ? "var(--diverging-pos)" : "var(--diverging-neg)"} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function SweepChart({ points, optimum }: { points: SweepPoint[]; optimum: SweepPoint }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={points} margin={{ top: 8, right: 24, bottom: 0, left: 0 }}>
+        <CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="0" />
+        <XAxis
+          dataKey="new_price"
+          stroke="var(--axis)"
+          tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+          tickFormatter={(v) => `$${compactNumber(v)}`}
+        />
+        <YAxis stroke="var(--axis)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} tickFormatter={compactNumber} />
+        <Tooltip
+          formatter={(value: number) => currencyFull(value)}
+          labelFormatter={(label: number) => `Price: $${compactNumber(label)}`}
+          contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--grid)", fontSize: 12 }}
+        />
+        <Line type="monotone" dataKey="new_profit" name="Profit" stroke="var(--series-1)" strokeWidth={2} dot={false} />
+        <ReferenceDot
+          x={optimum.new_price}
+          y={optimum.new_profit}
+          r={6}
+          fill="var(--diverging-pos)"
+          stroke="var(--surface-1)"
+          strokeWidth={2}
+          label={{ value: "Best", position: "top", fill: "var(--text-secondary)", fontSize: 12 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
 
 // Fixed categorical order -- validated for CVD-safe adjacent contrast. Never
 // cycled or reassigned per-filter; the same product keeps the same color in
@@ -132,6 +235,11 @@ function DashboardInner() {
   const [error, setError] = useState<string | null>(null);
   const loading = businessId !== "" && summaryBusinessId !== businessId && !error;
 
+  const [query, setQuery] = useState("");
+  const [askLoading, setAskLoading] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [askResponse, setAskResponse] = useState<ScenarioResponse | null>(null);
+
   useEffect(() => {
     authedFetch("/businesses")
       .then(async (res) => {
@@ -178,6 +286,37 @@ function DashboardInner() {
     [summary]
   );
   const colorFor = useColorForProduct(productNames);
+
+  async function handleAsk(e: React.FormEvent) {
+    e.preventDefault();
+    if (!businessId || !query.trim()) {
+      setAskError("Type a question first.");
+      return;
+    }
+    setAskError(null);
+    setAskLoading(true);
+    setAskResponse(null);
+    try {
+      const res = await authedFetch("/scenario/query", {
+        method: "POST",
+        body: JSON.stringify({ business_id: businessId, query }),
+      });
+      if (!res.ok) {
+        const detail = await res.text();
+        setAskError(friendlyScenarioError(res.status, detail));
+        return;
+      }
+      setAskResponse(await res.json());
+    } catch (err) {
+      if (err instanceof UnauthenticatedError) {
+        router.push("/login");
+        return;
+      }
+      setAskError("Could not reach the server. Is the backend running?");
+    } finally {
+      setAskLoading(false);
+    }
+  }
 
   const trendByPeriod = useMemo(() => {
     if (!summary) return [];
@@ -349,6 +488,62 @@ function DashboardInner() {
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
+
+            <div className="rounded-xl border border-zinc-200 bg-[var(--surface-1)] p-5 shadow-sm dark:border-zinc-800">
+              <h2 className="mb-3 text-sm font-semibold text-[var(--text-secondary)]">What-if</h2>
+              <form onSubmit={handleAsk} className="flex gap-2">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="e.g. What if I raise the price of Widget by 10%?"
+                  className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-600 dark:focus:ring-white/10"
+                />
+                <button
+                  type="submit"
+                  disabled={askLoading}
+                  className="cursor-pointer rounded bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+                >
+                  {askLoading ? "Thinking..." : "Ask"}
+                </button>
+              </form>
+
+              {askError && (
+                <p className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+                  {askError}
+                </p>
+              )}
+
+              {askResponse?.status === "needs_clarification" && (
+                <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  {askResponse.message}
+                </p>
+              )}
+
+              {askResponse?.status === "ok" && (
+                <div className="mt-4 flex flex-col gap-3">
+                  <h3 className="text-sm font-semibold text-[var(--text-secondary)]">
+                    {askResponse.product_name} &middot; {askResponse.lever === "price" ? "Price change" : "Sourcing change"}
+                  </h3>
+
+                  {askResponse.kind === "single" && <BeforeAfterChart result={askResponse.result} />}
+                  {askResponse.kind === "sweep" && (
+                    <SweepChart points={askResponse.points} optimum={askResponse.optimum} />
+                  )}
+
+                  {askResponse.narration && (
+                    <p className="text-sm text-[var(--text-secondary)]">{askResponse.narration}</p>
+                  )}
+
+                  {askResponse.is_elasticity_estimated === false && (
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Note: not enough price history to estimate this product&apos;s own demand sensitivity, so a
+                      default assumption was used instead.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

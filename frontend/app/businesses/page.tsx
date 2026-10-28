@@ -108,12 +108,6 @@ export default function Businesses() {
                 Dashboard
               </Link>
               <Link
-                href={`/scenario?business=${b.id}`}
-                className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
-              >
-                What-if
-              </Link>
-              <Link
                 href={`/ingest?business=${b.id}`}
                 className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
               >
