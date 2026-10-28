@@ -44,7 +44,7 @@ export default function Login() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="rounded border border-zinc-300 px-3 py-2 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-600 dark:focus:ring-white/10"
           required
         />
         <input
@@ -52,21 +52,21 @@ export default function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="rounded border border-zinc-300 px-3 py-2 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-600 dark:focus:ring-white/10"
           required
           minLength={6}
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
-          className="rounded bg-black px-3 py-2 text-white dark:bg-white dark:text-black"
+          className="cursor-pointer rounded bg-black px-3 py-2 text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
         >
           {mode === "login" ? "Log in" : "Sign up"}
         </button>
         <button
           type="button"
           onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="text-sm text-zinc-500 underline"
+          className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
         >
           {mode === "login" ? "Need an account? Sign up" : "Have an account? Log in"}
         </button>

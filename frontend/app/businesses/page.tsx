@@ -66,7 +66,10 @@ export default function Businesses() {
         <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
           Your businesses
         </h1>
-        <button onClick={handleLogout} className="text-sm text-zinc-500 underline">
+        <button
+          onClick={handleLogout}
+          className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+        >
           Log out
         </button>
       </div>
@@ -77,10 +80,13 @@ export default function Businesses() {
           placeholder="Business name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="flex-1 rounded border border-zinc-300 px-3 py-2 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-600 dark:focus:ring-white/10"
           required
         />
-        <button type="submit" className="rounded bg-black px-3 py-2 text-white dark:bg-white dark:text-black">
+        <button
+          type="submit"
+          className="cursor-pointer rounded bg-black px-3 py-2 text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+        >
           Add
         </button>
       </form>
@@ -91,12 +97,12 @@ export default function Businesses() {
         {businesses.map((b) => (
           <li
             key={b.id}
-            className="flex items-center justify-between border-b border-zinc-200 py-2 dark:border-zinc-800"
+            className="flex items-center justify-between border-b border-zinc-200 py-2 transition-colors hover:bg-zinc-100/60 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
           >
             <span>{b.name}</span>
             <Link
               href={`/ingest?business=${b.id}`}
-              className="text-sm text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-300"
+              className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
             >
               Add data
             </Link>

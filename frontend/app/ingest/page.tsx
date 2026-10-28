@@ -205,7 +205,10 @@ function IngestPageInner() {
             <h1 className="text-xl font-semibold text-black dark:text-zinc-50">Add business data</h1>
             <p className="text-sm text-zinc-500">Paste text or upload a PDF — we&apos;ll extract the numbers for you to confirm.</p>
           </div>
-          <Link href="/businesses" className="text-sm text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-300">
+          <Link
+            href="/businesses"
+            className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+          >
             Back
           </Link>
         </header>
@@ -238,7 +241,7 @@ function IngestPageInner() {
               <select
                 value={businessId}
                 onChange={(e) => setBusinessId(e.target.value)}
-                className="rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="cursor-pointer rounded border border-zinc-300 bg-white px-3 py-2 text-sm transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-600 dark:focus:ring-white/10"
                 required
               >
                 <option value="" disabled>
@@ -258,10 +261,10 @@ function IngestPageInner() {
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     mode === m
                       ? "bg-white text-black shadow-sm dark:bg-zinc-950 dark:text-white"
-                      : "text-zinc-500"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
                   {m === "text" ? "Paste text" : "Upload PDF"}
@@ -275,21 +278,21 @@ function IngestPageInner() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste quarterly results, a product report, or any text with financial figures..."
                 rows={10}
-                className="resize-y rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className="resize-y rounded border border-zinc-300 px-3 py-2 text-sm transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-600 dark:focus:ring-white/10"
               />
             ) : (
               <input
                 type="file"
                 accept="application/pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className="cursor-pointer rounded border border-zinc-300 px-3 py-2 text-sm transition-colors file:cursor-pointer focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-600 dark:focus:ring-white/10"
               />
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="self-start rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+              className="self-start cursor-pointer rounded bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
             >
               {loading ? "Extracting..." : "Preview extracted data"}
             </button>
@@ -330,6 +333,7 @@ function IngestPageInner() {
                             type="checkbox"
                             checked={r.included}
                             onChange={(e) => updateRecord(i, { included: e.target.checked })}
+                            className="cursor-pointer accent-black dark:accent-white"
                           />
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">{FIELD_LABELS[r.field] ?? r.field}</td>
@@ -338,7 +342,7 @@ function IngestPageInner() {
                             type="number"
                             value={r.value}
                             onChange={(e) => updateRecord(i, { value: parseFloat(e.target.value) })}
-                            className="w-28 rounded border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700"
+                            className="w-28 rounded border border-zinc-300 bg-transparent px-2 py-1 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:focus:border-zinc-600 dark:focus:ring-white/10"
                           />
                         </td>
                         <td className="px-4 py-2">
@@ -346,7 +350,7 @@ function IngestPageInner() {
                             type="text"
                             value={r.product_name}
                             onChange={(e) => updateRecord(i, { product_name: e.target.value })}
-                            className="w-28 rounded border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700"
+                            className="w-28 rounded border border-zinc-300 bg-transparent px-2 py-1 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:focus:border-zinc-600 dark:focus:ring-white/10"
                           />
                         </td>
                         <td className="px-4 py-2">
@@ -354,7 +358,7 @@ function IngestPageInner() {
                             type="text"
                             value={r.period ?? ""}
                             onChange={(e) => updateRecord(i, { period: e.target.value || null })}
-                            className="w-24 rounded border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700"
+                            className="w-24 rounded border border-zinc-300 bg-transparent px-2 py-1 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:focus:border-zinc-600 dark:focus:ring-white/10"
                           />
                         </td>
                         <td className="max-w-xs px-4 py-2 font-mono text-xs text-zinc-500">{r.source_line}</td>
@@ -388,7 +392,7 @@ function IngestPageInner() {
                         type="checkbox"
                         checked={n.included}
                         onChange={(e) => updateNote(i, { included: e.target.checked })}
-                        className="mt-1"
+                        className="mt-1 cursor-pointer accent-black dark:accent-white"
                       />
                       <div>
                         {n.category && (
@@ -407,14 +411,14 @@ function IngestPageInner() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStep("input")}
-                className="rounded border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+                className="cursor-pointer rounded border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Back
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={loading || includedCount === 0}
-                className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                className="cursor-pointer rounded bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
               >
                 {loading ? "Saving..." : `Save ${includedCount} record${includedCount === 1 ? "" : "s"}`}
               </button>
@@ -436,13 +440,13 @@ function IngestPageInner() {
             <div className="flex gap-3">
               <button
                 onClick={startOver}
-                className="rounded border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+                className="cursor-pointer rounded border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Add more data
               </button>
               <Link
                 href="/businesses"
-                className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+                className="rounded bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
               >
                 Back to businesses
               </Link>
