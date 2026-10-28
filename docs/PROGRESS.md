@@ -57,11 +57,14 @@ Agreed during planning, to be built as part of Checkpoint 4 (deterministic calc 
 ## `business_notes`: catch-all bucket for anything outside the rigid schema
 Added during Checkpoint 2: a `business_notes` table (`category` text tag + `content` jsonb + `source_excerpt`) for content that doesn't fit `products`/`financial_records` — e.g. competitor mentions spotted in a report, market context, anything worth keeping for the LLM to reference later without needing a schema migration every time something new comes up. Scoped by `business_id` with the same RLS ownership pattern as everything else. This gives Checkpoint 6 (competitor lookup) something to read from/write to immediately rather than needing its own new table later.
 
-## Checkpoint 2 — Text + PDF ingestion — Not started
+## Checkpoint 2 — Text + PDF ingestion ✅ Done
 This is the core ingestion checkpoint (CSV/Excel was dropped — see scoping decisions above) and the system's main differentiator: going through messy real documents and extracting only what's substantial, rather than requiring pre-structured input.
-- **Build order within this checkpoint:** pasted-text path first (simpler — no page filtering needed), proving the full deterministic-extraction → LLM-structuring → validation → confirmation-table pattern. Then extend to PDF by adding the page-filtering step in front of the same pipeline.
-- Will need: `products` / `financial_records` tables, designed now (nullable fields per the schema-flexibility decision above) since this is the checkpoint that actually needs them.
-- Deliverable / "done" signal: run both a curated clean sample and a deliberately messy sample (missing fields, unusual terminology) through each path; confirm correct extraction on the clean one and correct *flagging* (not silent wrong data) on the messy one.
+- Built: `products`/`financial_records`/`business_notes` tables + RLS; deterministic candidate extraction (regex/keyword, no LLM, 14 unit tests); PDF page scoring/selection (keyword+number density, no LLM, 6 unit tests, proven against a real generated PDF); LLM structuring with deterministic post-hoc validation against the original candidates (8 unit tests, including the core guarantee that an altered/invented value is rejected, not trusted); record grouping into per-product/period rows (6 unit tests); `/ingest/text/preview`, `/ingest/pdf/preview`, `/ingest/text/confirm` endpoints; frontend ingestion UI (paste text/upload PDF, editable review table with verified/unverified badges, source-line traceability, notes section).
+- Decisions:
+  - LLM client made provider-agnostic (`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_STRUCTURING_MODELS`, any OpenAI-compatible endpoint) after OpenRouter's free-tier model (`google/gemma-4-26b-a4b-it:free`) kept hitting shared-pool rate limits (429s) during testing. Switched to **Groq** (`https://api.groq.com/openai/v1/chat/completions`, model `qwen/qwen3.8-27b`), which has a generous free tier and worked reliably.
+  - Candidates carry a `context_text` field (last 3 non-blank preceding lines) alongside the matched line. Without this, a real multi-product test showed the LLM correctly refusing to guess product/period (defaulting everything to "General"/"Unknown") since it only saw an isolated line like "Total revenue: $500,000" with no heading above it. Adding context_text fixed this — verified against real multi-product/multi-period text through Groq.
+- Verified: full pipeline (extraction → Groq structuring → validation → grouping) tested directly in Python against realistic multi-product text, then end-to-end through the real UI on the deployed Vercel+Render+Supabase stack — pasted text saved correctly into `financial_records`/`products` under the right business.
+- Gotcha: a locally running `uvicorn --reload` process does **not** pick up `.env` changes — `--reload` only watches code files, not env vars, since `python-dotenv` loads once at process start. Must fully restart the process after editing `.env`, not just save-and-let-it-reload.
 
 ## Checkpoint 3 — Dashboard visualization — Not started
 - Plan: revenue/product-mix/margin charts (Recharts) reading from real DB records; spot-check against the source document/text by hand.
@@ -88,6 +91,6 @@ This is the core ingestion checkpoint (CSV/Excel was dropped — see scoping dec
 ## External services status
 - GitHub: repo created, pushed.
 - Vercel: frontend deployed, env vars set (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-- Render: backend deployed, env vars set (`CORS_ALLOWED_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`). Free tier sleeps on idle — expect a cold-start delay on first request after inactivity.
-- Supabase: project created, `businesses` table + RLS migration applied (`supabase/migrations/0001_init.sql`).
-- OpenRouter: not set up yet — needed starting at Checkpoint 2 (text/PDF structuring step), not just Checkpoint 4/5.
+- Render: backend deployed, env vars set (`CORS_ALLOWED_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_STRUCTURING_MODELS`). Free tier sleeps on idle — expect a cold-start delay on first request after inactivity.
+- Supabase: project created, `businesses`/`products`/`financial_records`/`business_notes` tables + RLS migrations applied.
+- LLM provider: Groq (free tier), model `qwen/qwen3.8-27b` — set up and verified working in both local dev and production. See Checkpoint 2 decisions above for why OpenRouter was dropped.

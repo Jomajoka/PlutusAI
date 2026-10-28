@@ -100,12 +100,20 @@ export default function Businesses() {
             className="flex items-center justify-between border-b border-zinc-200 py-2 transition-colors hover:bg-zinc-100/60 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
           >
             <span>{b.name}</span>
-            <Link
-              href={`/ingest?business=${b.id}`}
-              className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
-            >
-              Add data
-            </Link>
+            <div className="flex gap-3">
+              <Link
+                href={`/dashboard?business=${b.id}`}
+                className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href={`/ingest?business=${b.id}`}
+                className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+              >
+                Add data
+              </Link>
+            </div>
           </li>
         ))}
       </ul>
