@@ -5,15 +5,20 @@ from app.extraction.candidates import Candidate
 from app.llm.client import complete_json
 
 _SYSTEM_PROMPT = """You are a data structuring assistant. You will be given a \
-list of (field, value, source_line) candidates that were ALREADY extracted \
-deterministically from a business document -- you did not find these \
-numbers and must not invent, adjust, or add any new ones.
+list of (field, value, source_line, context_lines) candidates that were \
+ALREADY extracted deterministically from a business document -- you did not \
+find these numbers and must not invent, adjust, or add any new ones.
 
 Your only job: for each candidate, decide which product it belongs to (using \
 the provided list of known product names, or "General" if none fit or none \
-were given) and which reporting period it belongs to (e.g. "Q1 2024"), based \
-on the surrounding source_line and document context. If a candidate clearly \
-isn't a real financial figure (e.g. a page number, a year by itself), omit it.
+were given) and which reporting period it belongs to (e.g. "Q1 2024"). Use \
+context_lines (the lines immediately preceding source_line in the original \
+document, such as a product heading or period label) to make this \
+assignment -- do not default to "General"/omit the period just because the \
+number itself doesn't contain a product or period name. If a candidate \
+clearly isn't a real financial figure (e.g. a page number, a year by \
+itself), omit it. When you echo source_line back, copy it EXACTLY as given \
+-- never copy from context_lines instead.
 
 You may also note anything in the document that seems relevant but doesn't \
 fit (e.g. mentions of competitors or market context) in a separate "notes" \
@@ -54,6 +59,7 @@ def build_messages(candidates: list[Candidate], known_product_names: list[str]) 
             "field": c.field_guess,
             "value": c.value,
             "source_line": c.line_text,
+            "context_lines": c.context_text,
         }
         for c in candidates
     ]

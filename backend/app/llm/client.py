@@ -5,7 +5,6 @@ import httpx
 
 from app.config import settings
 
-_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 _TIMEOUT_SECONDS = 30
 
 
@@ -24,9 +23,9 @@ def complete_json(messages: list[dict], models: list[str] | None = None) -> dict
     (network error, non-2xx, or unparseable JSON). Raises LLMUnavailableError
     only if every model in the chain fails.
     """
-    model_chain = models or settings.openrouter_structuring_models
+    model_chain = models or settings.llm_structuring_models
     if not model_chain:
-        raise LLMUnavailableError("No OpenRouter models configured")
+        raise LLMUnavailableError("No LLM models configured")
 
     last_error: Exception | None = None
 
@@ -34,9 +33,9 @@ def complete_json(messages: list[dict], models: list[str] | None = None) -> dict
         try:
             with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:
                 resp = client.post(
-                    _OPENROUTER_URL,
+                    settings.llm_base_url,
                     headers={
-                        "Authorization": f"Bearer {settings.openrouter_api_key}",
+                        "Authorization": f"Bearer {settings.llm_api_key}",
                         "Content-Type": "application/json",
                     },
                     json={

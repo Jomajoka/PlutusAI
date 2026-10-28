@@ -21,6 +21,11 @@ _SUFFIX_MULTIPLIERS = {
 # How far past the end of a keyword match we'll look for a number on the same line.
 _SEARCH_WINDOW = 60
 
+# How many preceding non-blank lines to carry as context (e.g. a product
+# heading or period label above the matched line) for the LLM to use when
+# assigning product/period -- it never affects what counts as a valid match.
+_CONTEXT_LINES = 3
+
 
 @dataclass
 class Candidate:
@@ -29,6 +34,7 @@ class Candidate:
     raw_value_text: str
     value: float
     line_text: str
+    context_text: str = ""
 
 
 def parse_number(raw: str) -> float | None:
@@ -69,6 +75,7 @@ def extract_candidates(text: str) -> list[Candidate]:
     never off the raw text itself.
     """
     candidates: list[Candidate] = []
+    recent_lines: list[str] = []
 
     for line in text.splitlines():
         if not line.strip():
@@ -102,8 +109,11 @@ def extract_candidates(text: str) -> list[Candidate]:
                         raw_value_text=match.group().strip(),
                         value=value,
                         line_text=line.strip(),
+                        context_text="\n".join(recent_lines[-_CONTEXT_LINES:]),
                     )
                 )
                 break
+
+        recent_lines.append(line.strip())
 
     return candidates
