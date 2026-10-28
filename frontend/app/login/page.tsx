@@ -6,6 +6,7 @@ import { useState } from "react";
 import { authedFetch, Business } from "@/lib/api";
 import { getSupabase } from "@/lib/supabaseClient";
 import Logo from "@/components/Logo";
+import Spinner from "@/components/Spinner";
 
 export default function Login() {
   const router = useRouter();
@@ -13,10 +14,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     const supabase = getSupabase();
     const { error } =
@@ -26,6 +29,7 @@ export default function Login() {
 
     if (error) {
       setError(error.message);
+      setLoading(false);
       return;
     }
 
@@ -91,14 +95,17 @@ export default function Login() {
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <button
             type="submit"
-            className="cursor-pointer rounded bg-black px-3 py-2 font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
+            disabled={loading}
+            className="flex cursor-pointer items-center justify-center gap-2 rounded bg-black px-3 py-2 font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
           >
-            {mode === "login" ? "Log in" : "Sign up"}
+            {loading && <Spinner className="h-4 w-4 text-white dark:text-black" />}
+            {loading ? "Please wait..." : mode === "login" ? "Log in" : "Sign up"}
           </button>
           <button
             type="button"
+            disabled={loading}
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
+            className="cursor-pointer text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-zinc-300"
           >
             {mode === "login" ? "Need an account? Sign up" : "Have an account? Log in"}
           </button>

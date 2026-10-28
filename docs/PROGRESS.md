@@ -176,6 +176,21 @@ Replaced the plain "Loading..." text with a skeleton that mirrors the actual lay
 - Swapped into `frontend/app/dashboard/page.tsx` in place of the old `<p>Loading...</p>`.
 - Verified: frontend lint/build clean.
 
+## UI polish: fixed a real blank-page gap, not just a cosmetic spinner
+What looked like "the dashboard chart skeleton isn't showing" turned out to be a different, earlier gap: `app/dashboard/page.tsx`'s `<Suspense>` boundary (required because `DashboardInner` calls `useSearchParams()`) had no `fallback`, so React renders nothing at all while that boundary resolves on initial hydration -- a real blank screen, before `DashboardInner` (and its already-working `DashboardSkeleton`) even mounts. Most visible right after the login redirect.
+- `frontend/components/Spinner.tsx` -- a small inline-SVG spinner, plus `FullPageSpinner` (centered, matching page background) used as the `<Suspense fallback>`.
+- `frontend/app/login/page.tsx`: the login/signup button now shows the spinner + "Please wait..." and disables both buttons while the auth call + post-login business lookup are in flight -- that round trip also had zero visual feedback before.
+- Verified: frontend lint/build clean.
+
+## UI polish: loading feedback on the businesses page + dashboard nav
+- `frontend/app/businesses/page.tsx` had **no loading state at all** -- the list was just empty until the `/businesses` fetch resolved, which is exactly the "takes a few seconds to show up" gap reported. Added a `loading` state (skeleton rows while fetching, an explicit "no businesses yet" empty state once it resolves) and a spinner on the clicked business's "Dashboard" button while that navigation is in flight (`router.push` wrapped in a `goToDashboard()` helper instead of a bare `Link`, so there's visible feedback the click registered before the new page paints).
+- Gotcha carried over from earlier checkpoints, worth repeating here since it directly affects how long first-load waits feel: if testing against the **deployed** stack rather than local dev, Render's free tier sleeps after ~15 min idle, so the first request after a gap (loading the businesses list, or the first dashboard summary call) pays a real cold-start cost on top of normal network latency -- no UI fix removes that, it's inherent to the free hosting tier.
+- Verified: frontend lint/build clean.
+
+## UI polish: dashboard loading state is a spinner now, not a skeleton
+Swapped `DashboardSkeleton` out for a centered spinner + "Loading dashboard..." text in `frontend/app/dashboard/page.tsx`, per explicit preference -- removed the now-unused `DashboardSkeleton` export from `frontend/components/Skeleton.tsx` (the generic `Skeleton` block it was built from stays, still used for the businesses-page loading rows).
+- Verified: frontend lint/build clean.
+
 ## Checkpoint 6 — Competitor lookup (stretch) — Not started
 - Plan: on-demand web-search tool call, triggered only when a scenario query references a competitor.
 

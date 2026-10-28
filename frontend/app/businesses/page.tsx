@@ -1,18 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
 import { getSupabase } from "@/lib/supabaseClient";
 import Logo from "@/components/Logo";
+import Spinner from "@/components/Spinner";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function Businesses() {
   const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   async function loadBusinesses() {
     try {
@@ -24,6 +27,8 @@ export default function Businesses() {
       setBusinesses(await res.json());
     } catch (err) {
       if (err instanceof UnauthenticatedError) router.push("/login");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -36,6 +41,11 @@ export default function Businesses() {
       loadBusinesses();
     });
   }, []);
+
+  function goToDashboard(businessId: string) {
+    setNavigatingTo(businessId);
+    router.push(`/dashboard?business=${businessId}`);
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -95,24 +105,43 @@ export default function Businesses() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <ul className="w-full max-w-sm">
-        {businesses.map((b) => (
-          <li
-            key={b.id}
-            className="flex items-center justify-between border-b border-zinc-200 py-2 transition-colors hover:bg-zinc-100/60 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
-          >
-            <span>{b.name}</span>
-            <div className="flex gap-3">
-              <Link
-                href={`/dashboard?business=${b.id}`}
-                className="text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 dark:hover:text-zinc-300"
-              >
-                Dashboard
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {loading && (
+        <ul className="flex w-full max-w-sm flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="flex items-center justify-between border-b border-zinc-200 py-2 dark:border-zinc-800">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-16" />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!loading && businesses.length === 0 && !error && (
+        <p className="text-sm text-zinc-500">No businesses yet — add one above to get started.</p>
+      )}
+
+      {!loading && businesses.length > 0 && (
+        <ul className="w-full max-w-sm">
+          {businesses.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center justify-between border-b border-zinc-200 py-2 transition-colors hover:bg-zinc-100/60 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
+            >
+              <span>{b.name}</span>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => goToDashboard(b.id)}
+                  disabled={navigatingTo !== null}
+                  className="flex cursor-pointer items-center gap-1.5 text-sm text-zinc-500 underline transition-colors hover:text-zinc-800 disabled:cursor-not-allowed disabled:no-underline dark:hover:text-zinc-300"
+                >
+                  {navigatingTo === b.id && <Spinner className="h-3.5 w-3.5" />}
+                  Dashboard
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

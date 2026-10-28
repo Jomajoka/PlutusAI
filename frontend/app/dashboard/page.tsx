@@ -20,7 +20,7 @@ import {
 } from "recharts";
 
 import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
-import { DashboardSkeleton } from "@/components/Skeleton";
+import Spinner, { FullPageSpinner } from "@/components/Spinner";
 
 import IngestPanel from "./IngestPanel";
 
@@ -484,7 +484,12 @@ function DashboardInner() {
           />
         )}
 
-        {loading && <DashboardSkeleton />}
+        {loading && (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <Spinner className="h-8 w-8" />
+            <p className="text-sm text-zinc-500">Loading dashboard...</p>
+          </div>
+        )}
 
         {summary && !loading && summary.revenue_trend.length === 0 && (
           <p className="text-sm text-zinc-500">
@@ -843,7 +848,7 @@ function DashboardInner() {
 
 export default function DashboardPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<FullPageSpinner />}>
       <DashboardInner />
     </Suspense>
   );
