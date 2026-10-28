@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { authedFetch, Business, UnauthenticatedError } from "@/lib/api";
 import { getSupabase } from "@/lib/supabaseClient";
-
-type Business = { id: string; name: string };
 
 export default function Businesses() {
   const router = useRouter();
@@ -13,31 +13,17 @@ export default function Businesses() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  async function authedFetch(path: string, init?: RequestInit) {
-    const { data } = await getSupabase().auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      router.push("/login");
-      throw new Error("No session");
-    }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-    return fetch(`${apiUrl}${path}`, {
-      ...init,
-      headers: {
-        ...init?.headers,
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-  }
-
   async function loadBusinesses() {
-    const res = await authedFetch("/businesses");
-    if (!res.ok) {
-      setError(`Failed to load (${res.status})`);
-      return;
+    try {
+      const res = await authedFetch("/businesses");
+      if (!res.ok) {
+        setError(`Failed to load (${res.status})`);
+        return;
+      }
+      setBusinesses(await res.json());
+    } catch (err) {
+      if (err instanceof UnauthenticatedError) router.push("/login");
     }
-    setBusinesses(await res.json());
   }
 
   useEffect(() => {
@@ -53,16 +39,20 @@ export default function Businesses() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const res = await authedFetch("/businesses", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) {
-      setError(`Failed to create (${res.status})`);
-      return;
+    try {
+      const res = await authedFetch("/businesses", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        setError(`Failed to create (${res.status})`);
+        return;
+      }
+      setName("");
+      await loadBusinesses();
+    } catch (err) {
+      if (err instanceof UnauthenticatedError) router.push("/login");
     }
-    setName("");
-    await loadBusinesses();
   }
 
   async function handleLogout() {
@@ -99,8 +89,17 @@ export default function Businesses() {
 
       <ul className="w-full max-w-sm">
         {businesses.map((b) => (
-          <li key={b.id} className="border-b border-zinc-200 py-2 dark:border-zinc-800">
-            {b.name}
+          <li
+            key={b.id}
+            className="flex items-center justify-between border-b border-zinc-200 py-2 dark:border-zinc-800"
+          >
+            <span>{b.name}</span>
+            <Link
+              href={`/ingest?business=${b.id}`}
+              className="text-sm text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-300"
+            >
+              Add data
+            </Link>
           </li>
         ))}
       </ul>
